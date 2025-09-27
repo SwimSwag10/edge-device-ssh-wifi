@@ -66,13 +66,18 @@ setup_hostname_mdns() {
 # Function to configure WiFi via Netplan
 setup_netplan() {
   NETPLAN_FILE="/etc/netplan/01-netcfg.yaml"
+  if [ "${USE_STATIC,,}" = "y" ]; then
+    DHCP4="false"
+  else
+    DHCP4="true"
+  fi
   cat <<EOF > $NETPLAN_FILE
 network:
   version: 2
   renderer: networkd
   wifis:
     $INTERFACE:
-      dhcp4: ${USE_STATIC,, = "y" ? false : true}
+      dhcp4: $DHCP4
 EOF
   if [ "${USE_STATIC,,}" = "y" ]; then
     echo "      addresses: [$STATIC_IP$SUBNET]" >> $NETPLAN_FILE
@@ -91,6 +96,7 @@ EOF
       dhcp4: false
       optional: true
 EOF
+  chmod 600 $NETPLAN_FILE  # Set secure permissions
   netplan apply
   echo "Netplan configured for WiFi. Ethernet disabled."
 }

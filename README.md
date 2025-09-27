@@ -15,16 +15,26 @@ ssh-over-wifi-test/
 └── README.md       # Update with plug-and-play flow
 ```
 
-## Setup | Plug-and-Play for Edge Devices:
-1. Flash Ubuntu 24.04 Server ARM64 to SSD/microSD as per docs/setup_guide.md.
-2. Boot Orange Pi with Ethernet connected (for internet), HDMI/keyboard for login.
-3. Login (ubuntu/ubuntu, change password).
-4. Install git: sudo apt install git.
-5. Clone repo: git clone <repo-url> ssh-over-wifi-test && cd ssh-over-wifi-test/edge-device-setup.
-6. Plug in TP-Link WiFi adapter.
-7. Run activation: sudo ./activation.sh.
-8. Follow prompts (SSID, password, operatoryID, etc.).
-  - The password should follow this standard: `{OPERATORY_CITY}-{PRACTICE_ID}-{OPERATORY_ID}` where the each of these values are the NexHealth practice values.
-9. Script auto-sets up everything; device reboots.
-10. Disconnect Ethernet. From desktop, SSH to edge-op<ID>.local (e.g., ssh ubuntu@edge-op1.local).
-11. For desktop app: Run node dist/index.js connect --device edge-op1 (discovers via mDNS if needed).
+## Setup
+This repo is cloned and run only on the Orange Pi edge devices to configure WiFi and SSH. No code needed on the desktop. Just use your terminal to SSH after the edge device is setup.
+
+1. Flash Ubuntu 24.04 Server ARM64 to SSD/microSD (see docs/setup_guide.md).
+2. Boot with Ethernet connected, login (ubuntu/ubuntu, change password).
+3. Run this:
+```shell
+sudo apt install git
+```
+4. Run this:
+```shell
+git clone <repo-url> ssh-over-wifi-test
+```
+5. Plug in TP-Link WiFi adapter.
+6. Activate the shell automation. The password should follow this standard: `{OPERATORY_CITY}-{PRACTICE_ID}-{OPERATORY_ID}` where each of these values are the NexHealth practice values. Run this (follow prompts for SSID, password, operatoryID, etc.):
+```shell
+sudo ./activation.sh
+```
+7. Device reboots automatically.
+8. Disconnect Ethernet. From desktop terminal: ssh ubuntu@edge-op<ID>.local (e.g., edge-op1.local).
+9. For Windows: Install PuTTY or enable OpenSSH in Settings > Apps > Optional Features.
+
+If mDNS (.local) doesn't resolve (rare on some networks), use ip a on the edge device to get its IP and SSH to that instead.
