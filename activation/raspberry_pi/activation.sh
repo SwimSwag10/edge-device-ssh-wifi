@@ -10,6 +10,15 @@
 
 set -e  # Exit on error
 
+TARGET_USER="${TARGET_USER:-${1:-ubuntu}}"
+TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
+[ -n "$TARGET_HOME" ] || TARGET_HOME="/home/$TARGET_USER"
+
+if ! id -u "$TARGET_USER" >/dev/null 2>&1; then
+  echo "User '$TARGET_USER' does not exist. Create it first, then rerun."
+  exit 1
+fi
+
 # Function to detect WiFi interface (hardcoded for RPi)
 detect_wifi_interface() {
   INTERFACE="wlan0"
@@ -37,6 +46,7 @@ prompt_user() {
     GATEWAY=${GATEWAY:-192.168.1.1}
   fi
   read -p "Paste your desktop's SSH public key (for key-based auth): " PUB_KEY
+  read -p "Skip Netplan WiFi configuration? (y/N): " SKIP_NETPLAN
 }
 
 # Function to set hostname and mDNS
@@ -90,17 +100,20 @@ EOF
 
 # Function to setup SSH
 setup_ssh() {
-  sudo apt install -y openssh-server  # Already installed by default, but ensure
+  sudo apt install -y openssh-server
   systemctl start ssh
   systemctl enable ssh
-  mkdir -p /home/ubuntu/.ssh
-  echo "$PUB_KEY" >> /home/ubuntu/.ssh/authorized_keys
-  chmod 600 /home/ubuntu/.ssh/authorized_keys
-  chown ubuntu:ubuntu /home/ubuntu/.ssh -R
+
+  mkdir -p "$TARGET_HOME/.ssh"
+  echo "$PUB_KEY" >> "$TARGET_HOME/.ssh/authorized_keys"
+  chmod 700 "$TARGET_HOME/.ssh"
+  chmod 600 "$TARGET_HOME/.ssh/authorized_keys"
+  chown -R "$TARGET_USER:$TARGET_USER" "$TARGET_HOME/.ssh"
+
   sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
   sed -i 's/#PermitRootLogin .*/PermitRootLogin no/' /etc/ssh/sshd_config
   systemctl restart ssh
-  echo "SSH setup complete. Password auth disabled; use keys only."
+  echo "SSH setup complete for user '$TARGET_USER'. Password auth disabled; use keys only."
 }
 
 # Function to generate config
@@ -141,14 +154,18 @@ sudo apt update
 detect_wifi_interface
 prompt_user
 setup_hostname_mdns
-setup_netplan
+if [ "${SKIP_NETPLAN,,}" = "y" ]; then
+  echo "Skipping Netplan configuration as requested."
+else
+  setup_netplan
+fi
 setup_ssh
 generate_config
 test_wifi  # Verify before reboot
 
 echo "Setup complete! Disconnect Ethernet, reboot, and from any desktop terminal on the network:"
-echo "  ssh ubuntu@$HOSTNAME.local"
-echo "  (On Windows, use ssh ubuntu@$HOSTNAME.local)"
+echo "  ssh $TARGET_USER@$HOSTNAME.local"
+echo "  (On Windows, use ssh $TARGET_USER@$HOSTNAME.local)"
 echo "For multiple devices, repeat on each with unique operatoryID."
 echo "Rebooting in 10 seconds..."
 sleep 10
